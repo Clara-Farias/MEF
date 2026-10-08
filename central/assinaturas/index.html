@@ -134,14 +134,13 @@ const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: "layout-dashboard" },
   { key: "colaboradores", label: "Colaboradores", icon: "users" },
   { key: "assinaturas", label: "Assinaturas", icon: "file-signature" },
-  { key: "revisao", label: "Revisão", icon: "clock" },
   { key: "templates", label: "Templates", icon: "layout-template" },
   { key: "historico", label: "Histórico", icon: "history" },
   { key: "logs", label: "Logs", icon: "file-text" },
 ];
 
 const PAGE_TITLES = {
-  dashboard: ["Dashboard", "Visão geral das assinaturas"],
+  dashboard: ["Dashboard", "Visão geral das assinaturas geradas"],
   colaboradores: ["Colaboradores", "Sincronizados do Monday.com"],
   assinaturas: ["Assinaturas", "Acompanhe o status de cada assinatura"],
   revisao: ["Revisão", "Assinaturas aguardando aprovação"],
@@ -150,8 +149,8 @@ const PAGE_TITLES = {
   logs: ["Logs", "Eventos técnicos do sistema"],
 };
 
-const STATUS_DB_TO_LABEL = { pendente: "Pendente", aguardando_aprovacao: "Aguardando Aprovação", aprovada: "Aprovada", enviada: "Aprovada", erro: "Erro" };
-const STATUS_LABEL_TO_DB = { Pendente: "pendente", "Aguardando Aprovação": "aguardando_aprovacao", Aprovada: "enviada", Erro: "erro" };
+const STATUS_DB_TO_LABEL = { pendente: "Pendente", aguardando_aprovacao: "Gerada", aprovada: "Gerada", enviada: "Gerada", erro: "Erro" };
+const STATUS_LABEL_TO_DB = { Pendente: "pendente", Gerada: "enviada", Erro: "erro" };
 const TIPO_DB_TO_LABEL = { sucesso: "Sucesso", erro: "Erro", info: "Info" };
 
 function formatarData(iso) {
@@ -180,7 +179,7 @@ function mapRegistroFromDb(row) {
     foto: row.foto,
     png_url: row.png_url,
     htmlAssinatura: row.html_assinatura,
-    status: STATUS_DB_TO_LABEL[row.status] || row.status,
+    status: row.status === "erro" ? "Erro" : (row.html_assinatura ? "Gerada" : "Pendente"),
     atualizado: formatarData(row.ultima_atualizacao),
     data: formatarData(row.ultima_atualizacao),
     dataCriacaoRaw: row.data_criacao,
@@ -344,6 +343,7 @@ const STATUS_STYLES = {
   Pendente: { bg: "bg-gray-100", text: "text-gray-600", dot: "#9CA3AF" },
   "Aguardando Aprovação": { bg: "bg-amber-50", text: "text-amber-700", dot: "#F59E0B" },
   Aprovada: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "#1a934d" },
+  Gerada: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "#1a934d" },
   Erro: { bg: "bg-red-50", text: "text-red-700", dot: "#EF4444" },
   Ativo: { bg: "bg-emerald-50", text: "text-emerald-700", dot: "#1a934d" },
   "Sem Assinatura": { bg: "bg-gray-100", text: "text-gray-500", dot: "#9CA3AF" },
@@ -449,17 +449,17 @@ function StatCard({ label, value, iconName, color, t }) {
 }
 
 function DashboardPage({ t, darkMode, assinaturas, evolucaoDiaria }) {
-  const geradas = assinaturas.length;
-  const pendentesAprovacao = assinaturas.filter((a) => a.status === "Aguardando Aprovação").length;
-  const aprovadas = assinaturas.filter((a) => a.status === "Aprovada").length;
+  const total = assinaturas.length;
+  const geradas = assinaturas.filter((a) => a.status === "Gerada").length;
+  const semAssinatura = assinaturas.filter((a) => a.status === "Pendente").length;
   const erros = assinaturas.filter((a) => a.status === "Erro").length;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Assinaturas Geradas" value={geradas} iconName="file-signature" color={BRAND_GREEN} t={t} />
-        <StatCard label="Pendentes de Aprovação" value={pendentesAprovacao} iconName="clock" color="#F59E0B" t={t} />
-        <StatCard label="Aprovadas" value={aprovadas} iconName="check-circle-2" color="#1a934d" t={t} />
+        <StatCard label="Colaboradores" value={total} iconName="users" color={BRAND_GREEN} t={t} />
+        <StatCard label="Assinaturas Geradas" value={geradas} iconName="check-circle-2" color="#1a934d" t={t} />
+        <StatCard label="Sem Assinatura" value={semAssinatura} iconName="clock" color="#F59E0B" t={t} />
         <StatCard label="Erros" value={erros} iconName="alert-triangle" color="#EF4444" t={t} />
       </div>
 
@@ -602,7 +602,7 @@ function ColaboradoresPage({ t, darkMode, colaboradores, search, setSearch, onGe
   );
 }
 
-const FILTERS = ["Todos", "Pendente", "Aguardando Aprovação", "Aprovada", "Erro"];
+const FILTERS = ["Todos", "Gerada", "Pendente", "Erro"];
 
 function AssinaturasPage({ t, darkMode, assinaturas, onView, onAdvance, onBaixar }) {
   const [filter, setFilter] = useState("Todos");
@@ -656,13 +656,9 @@ function AssinaturasPage({ t, darkMode, assinaturas, onView, onAdvance, onBaixar
                       <button title="Baixar PNG" onClick={() => onBaixar(a)} className={`p-1.5 rounded-lg ${t.hover}`}>
                         <Icon name="download" size={15} style={{ color: BRAND_MID }} />
                       </button>
-                      {a.status !== "Aprovada" && (
-                        <button title="Avançar status" onClick={() => onAdvance(a)} className={`p-1.5 rounded-lg ${t.hover}`}>
-                          <Icon
-                            name={a.status === "Erro" ? "refresh-cw" : a.status === "Aguardando Aprovação" ? "check-circle-2" : "send"}
-                            size={15}
-                            style={{ color: a.status === "Erro" ? "#EF4444" : a.status === "Aguardando Aprovação" ? BRAND_GREEN : "#3B82F6" }}
-                          />
+                      {a.status !== "Gerada" && (
+                        <button title="Gerar assinatura" onClick={() => onAdvance(a)} className={`p-1.5 rounded-lg ${t.hover}`}>
+                          <Icon name="refresh-cw" size={15} style={{ color: a.status === "Erro" ? "#EF4444" : BRAND_GREEN }} />
                         </button>
                       )}
                     </div>
@@ -779,7 +775,7 @@ function PreviewModal({ colaborador, assinatura, onClose, onRegenerar, onEnviarR
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                <button onClick={() => onRegenerar(colaborador)} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border ${t.text} ${t.border} ${t.hover}`}>
+                <button onClick={() => onRegenerar(colaborador)} className={`col-span-2 order-last flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border ${t.text} ${t.border} ${t.hover}`}>
                   <Icon name="refresh-cw" size={14} /> Regenerar
                 </button>
                 <button onClick={() => onBaixar(colaborador)} className="col-span-2 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-white" style={{ background: BRAND_GREEN }}>
@@ -790,9 +786,6 @@ function PreviewModal({ colaborador, assinatura, onClose, onRegenerar, onEnviarR
                 </button>
                 <button onClick={handleCopy} className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border ${t.text} ${t.border} ${t.hover}`}>
                   <Icon name={copied ? "check" : "copy"} size={14} style={copied ? { color: BRAND_GREEN } : {}} /> {copied ? "Copiado!" : "Copiar HTML"}
-                </button>
-                <button onClick={() => onEnviarRevisao(assinatura)} className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-white" style={{ background: BRAND_GREEN }}>
-                  <Icon name="send" size={14} /> Enviar p/ Revisão
                 </button>
               </div>
             </>
@@ -1044,7 +1037,7 @@ function App() {
   const handleGerar = async (registro) => {
     setGeneratingId(registro.id);
     const html = generateSignatureHTML(registro);
-    const { error } = await sb.from("assinaturas").update({ html_assinatura: html, status: "pendente" }).eq("id", registro.id);
+    const { error } = await sb.from("assinaturas").update({ html_assinatura: html, status: "enviada" }).eq("id", registro.id);
     setGeneratingId(null);
     if (error) {
       notify(`Erro ao gerar assinatura de ${registro.nome}`, "error");
@@ -1059,7 +1052,7 @@ function App() {
   const handleRegenerar = async (registro) => {
     setPreviewLoading(true);
     const html = generateSignatureHTML(registro);
-    const { error } = await sb.from("assinaturas").update({ html_assinatura: html }).eq("id", registro.id);
+    const { error } = await sb.from("assinaturas").update({ html_assinatura: html, status: "enviada" }).eq("id", registro.id);
     setPreviewLoading(false);
     if (error) {
       notify(`Erro ao regenerar assinatura de ${registro.nome}`, "error");
@@ -1080,20 +1073,7 @@ function App() {
     carregarDados();
   };
 
-  const handleAdvance = async (registro) => {
-    const atual = STATUS_LABEL_TO_DB[registro.status];
-    let novo = atual;
-    let msg = "";
-    if (atual === "pendente") { novo = "aguardando_aprovacao"; msg = "enviada para revisão"; }
-    else if (atual === "aguardando_aprovacao") { novo = "enviada"; msg = "aprovada — pronta para baixar"; }
-    else if (atual === "erro") { novo = "pendente"; msg = "reenfileirada"; }
-    const { error } = await sb.from("assinaturas").update({ status: novo }).eq("id", registro.id);
-    if (!error) {
-      notify(`Assinatura de ${registro.nome} ${msg}`);
-      await registrarLog(`Assinatura de ${registro.nome} ${msg}`);
-    }
-    carregarDados();
-  };
+  const handleAdvance = async (registro) => { await handleGerar(registro); };
 
   const handleReprovar = async (registro) => {
     const { error } = await sb.from("assinaturas").update({ status: "pendente" }).eq("id", registro.id);
@@ -1128,7 +1108,7 @@ function App() {
   return (
     <div className={`min-h-screen flex ${t.bg}`}>
       <ToastView toast={toast} />
-      <Sidebar page={page} setPage={setPage} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} revisaoCount={registros.filter((r) => r.status === "Aguardando Aprovação").length} />
+      <Sidebar page={page} setPage={setPage} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} revisaoCount={0} />
       <div className="flex-1 min-w-0 flex flex-col">
         <Topbar title={title} subtitle={subtitle} t={t} darkMode={darkMode} setDarkMode={setDarkMode} setSidebarOpen={setSidebarOpen} />
         <main className="flex-1 overflow-y-auto">
@@ -1144,9 +1124,6 @@ function App() {
               )}
               {page === "assinaturas" && (
                 <AssinaturasPage t={t} darkMode={darkMode} assinaturas={registros} onView={setPreviewColab} onAdvance={handleAdvance} onBaixar={handleBaixar} />
-              )}
-              {page === "revisao" && (
-                <RevisaoPage t={t} darkMode={darkMode} assinaturas={registros} onView={setPreviewColab} onAdvance={handleAdvance} onReprovar={handleReprovar} onBaixar={handleBaixar} />
               )}
               {page === "templates" && <TemplatesPage t={t} onSave={notify} />}
               {page === "historico" && <HistoricoPage t={t} historico={historico} />}

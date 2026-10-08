@@ -62,6 +62,20 @@ main.wrap{padding-block:40px 64px;display:flex;flex-direction:column;gap:48px}
 .sig .bar{height:18px;border-radius:5px;background:linear-gradient(90deg,#033838,#1a934d 60%,#A3C642)}
 .sig .tag{font:700 9px/1 var(--f-body);letter-spacing:.18em;color:#A3C642;text-transform:uppercase}
 
+.thumb.ill{display:flex;flex-direction:column;justify-content:center;gap:12px;padding:14px;cursor:default}
+.ill .tag{font:700 9px/1 var(--f-body);letter-spacing:.18em;color:#A3C642;text-transform:uppercase}
+.ill .cols{display:flex;align-items:flex-end;gap:6px;height:70px;border-bottom:1px solid #2b6f69}
+.ill .cols i{flex:1;background:#A3C642;border-radius:3px 3px 0 0}
+.ill .cols i:nth-child(2){background:#1a934d}
+.ill .cols i:nth-child(4){background:#EFEADD;opacity:.8}
+.ill .rows{display:flex;flex-direction:column;gap:7px}
+.ill .rows i{display:block;height:6px;border-radius:3px;background:#EFEADD;opacity:.8}
+.ill .rows i.s{width:60%;opacity:.45}
+.ill .radar{width:100%;max-width:110px;aspect-ratio:1;border-radius:50%;border:1.5px solid #1a934d;margin:0 auto;position:relative;background:radial-gradient(circle,transparent 30%,#1a934d33 31%,transparent 33%,transparent 60%,#1a934d33 61%,transparent 63%);overflow:hidden}
+.ill .radar span{position:absolute;inset:0;background:conic-gradient(from 20deg,#A3C64288,transparent 25%);border-radius:50%}
+.ill .radar::after{content:"";position:absolute;width:8px;height:8px;border-radius:50%;background:#A2E844;top:30%;left:62%}
+.group-note{margin:14px 0 0}
+.btn.off{opacity:.45;pointer-events:none;cursor:default}
 .info{display:flex;flex-direction:column;gap:10px;min-width:0}
 .kind{font:700 11px/1 var(--f-body);letter-spacing:.18em;text-transform:uppercase;color:var(--accent)}
 .info h3{font:700 clamp(22px,3vw,28px)/1.1 var(--f-title);margin:0;letter-spacing:.01em;text-wrap:balance}
@@ -110,9 +124,9 @@ footer .wrap{padding-block:24px;display:flex;justify-content:space-between;gap:1
     <h1>Central de Sistemas</h1>
     <p class="intro">Os sistemas que o time construiu, num só lugar. Abra cada um aqui mesmo ou em tela cheia para usar no totem e no dia a dia.</p>
     <div class="count">
-      <div><b>3</b><small>Sistemas</small></div>
+      <div><b>5</b><small>Sistemas</small></div>
       <div><b>2</b><small>Ativações de evento</small></div>
-      <div><b>1</b><small>Ferramenta interna</small></div>
+      <div><b>3</b><small>Ferramentas internas</small></div>
     </div>
   </div>
 </header>
@@ -151,7 +165,42 @@ footer .wrap{padding-block:24px;display:flex;justify-content:space-between;gap:1
   </section>
 
   <section aria-labelledby="g2">
-    <div class="group-h"><h2 id="g2">Ferramentas internas</h2><p>Uso do time de marketing e RH</p></div>
+    <div class="group-h"><h2 id="g2">Ferramentas internas</h2><p>Gestão, eventos internos e comunicação</p></div>
+    <p class="note group-note" id="dbNote" hidden>Estas ferramentas usam banco de dados ao vivo, por isso abrem no GitHub Pages, em uma nova aba.</p>
+
+    <article class="sys">
+      <div class="thumb ill bi" aria-hidden="true">
+        <span class="tag">Portfólio</span>
+        <div class="cols"><i style="height:62%"></i><i style="height:88%"></i><i style="height:45%"></i><i style="height:74%"></i></div>
+        <div class="rows"><i></i><i class="s"></i><i></i></div>
+      </div>
+      <div class="info">
+        <span class="kind">Produtos e Laboratório</span>
+        <h3>Painel de Produtos</h3>
+        <p>Acompanha o portfólio do Radar de Soluções e as iniciativas do laboratório, como MIRA e IACOB, com status e andamento de cada projeto. Todo o time consulta livremente; só quem tem login edita.</p>
+        <ul class="specs"><li>Leitura aberta ao time</li><li>Edição com login</li><li>Banco Supabase</li></ul>
+        <div class="actions">
+          <a class="btn primary" data-pages="painel-produtos/" data-live="https://clara-farias.github.io/projetoBI/painelProdutos.html" href="painel-produtos/" target="_blank" rel="noopener">Abrir painel ↗</a>
+        </div>
+      </div>
+    </article>
+
+    <article class="sys">
+      <div class="thumb ill rd" aria-hidden="true">
+        <span class="tag">Banca</span>
+        <div class="radar"><span></span></div>
+        <div class="rows"><i></i><i class="s"></i></div>
+      </div>
+      <div class="info">
+        <span class="kind">Evento interno</span>
+        <h3>Radar de Soluções</h3>
+        <p>Sistema do evento Radar de Soluções: cadastro das ideias, notas da banca de avaliadores e premiação, com resultados ao vivo.</p>
+        <ul class="specs"><li>Notas da banca</li><li>Ranking e premiação</li><li>Banco Supabase</li></ul>
+        <div class="actions">
+          <a class="btn primary" data-pages="radar/" data-live="https://clara-farias.github.io/gamebanca/radar.html" href="radar/" target="_blank" rel="noopener">Abrir radar ↗</a>
+        </div>
+      </div>
+    </article>
 
     <article class="sys">
       <div class="thumb sig" aria-hidden="true">
@@ -166,9 +215,9 @@ footer .wrap{padding-block:24px;display:flex;justify-content:space-between;gap:1
         <p>Gera a assinatura de e-mail de cada colaborador no padrão da marca, com fila de revisão, histórico e registro de ações. A lista de colaboradores vem do Monday e se atualiza sozinha a cada 15 minutos.</p>
         <ul class="specs"><li>Painel e revisão</li><li>Banco Supabase</li><li>Sincroniza com Monday</li></ul>
         <div class="actions">
-          <a class="btn primary" id="sigLink" href="assinaturas/" target="_blank" rel="noopener">Abrir sistema ↗</a>
+          <a class="btn primary" data-pages="assinaturas/" href="assinaturas/" target="_blank" rel="noopener">Abrir gerador ↗</a>
         </div>
-        <p class="note" id="sigNote" hidden>Este sistema roda no endereço do GitHub Pages, porque precisa se conectar ao banco de dados. Ele abre em uma nova aba.</p>
+        <p class="note" id="sigWait" hidden>O gerador entra no ar quando a pasta central for enviada ao repositório MF no GitHub.</p>
       </div>
     </article>
   </section>
@@ -192,8 +241,12 @@ footer .wrap{padding-block:24px;display:flex;justify-content:space-between;gap:1
   var PAGES='https://clara-farias.github.io/MF/central/';
   var onPages=/github\.io$/.test(location.hostname);
   if(!onPages){
-    document.getElementById('sigLink').href=PAGES+'assinaturas/';
-    document.getElementById('sigNote').hidden=false;
+    document.querySelectorAll('[data-pages]').forEach(function(a){
+      var live=a.getAttribute('data-live');
+      if(live){ a.href=live; } else { a.removeAttribute('href'); a.setAttribute('aria-disabled','true'); a.classList.add('off'); }
+    });
+    document.getElementById('dbNote').hidden=false;
+    document.getElementById('sigWait').hidden=false;
   }
   var v=document.getElementById('viewer'), f=document.getElementById('vFrame'), t=document.getElementById('vTitle'), n=document.getElementById('vNew'), last=null;
   function open(src,name,btn){ last=btn; t.textContent=name; n.href=src; f.src=src; v.hidden=false; document.body.style.overflow='hidden'; document.getElementById('vClose').focus(); }
