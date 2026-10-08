@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="robots" content="noindex, nofollow" />
+<meta name="referrer" content="no-referrer" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Gerador de Assinaturas — Meireles &amp; Freitas</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="https://cdn.jsdelivr.net/npm/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.7/babel.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&family=Raleway:wght@400;500;600;700&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 <style>
@@ -26,7 +27,9 @@ const { useState, useEffect, useMemo } = React;
 
 const SUPABASE_URL = "https://qjmbipcyofsvufpasqlf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_q4xN9r9UEkhwn-B3PfoIcw_ofGL4rOn";
-const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { storage: window.sessionStorage, persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+});
 
 const BRAND_DARK = "#033838";   // verde petróleo (cor principal)
 const BRAND_GREEN = "#09533e";  // verde escuro — ações/botões
@@ -415,7 +418,7 @@ function Sidebar({ page, setPage, sidebarOpen, setSidebarOpen, revisaoCount }) {
   );
 }
 
-function Topbar({ title, subtitle, t, darkMode, setDarkMode, setSidebarOpen }) {
+function Topbar({ title, subtitle, t, darkMode, setDarkMode, setSidebarOpen, usuario, onSair }) {
   return (
     <header className={`h-16 flex items-center justify-between px-4 md:px-6 border-b ${t.panel} ${t.border}`} style={{ borderTop: `4px solid ${BRAND_LIME}` }}>
       <div className="flex items-center gap-3 min-w-0">
@@ -427,9 +430,17 @@ function Topbar({ title, subtitle, t, darkMode, setDarkMode, setSidebarOpen }) {
           {subtitle && <p className={`text-xs ${t.subtext} truncate`}>{subtitle}</p>}
         </div>
       </div>
-      <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-lg ${t.hover}`} title="Alternar tema">
-        <Icon name={darkMode ? "sun" : "moon"} size={18} className={t.text} />
-      </button>
+      <div className="flex items-center gap-1 shrink-0">
+        {usuario && <span className={`hidden md:inline text-xs mr-2 ${t.subtext}`}>{usuario}</span>}
+        <button onClick={() => setDarkMode(!darkMode)} className={`p-2 rounded-lg ${t.hover}`} title="Alternar tema">
+          <Icon name={darkMode ? "sun" : "moon"} size={18} className={t.text} />
+        </button>
+        {onSair && (
+          <button onClick={onSair} className={`flex items-center gap-1.5 px-2.5 py-2 rounded-lg text-xs font-semibold ${t.text} ${t.hover}`} title="Sair">
+            <Icon name="log-out" size={16} /> <span className="hidden sm:inline">Sair</span>
+          </button>
+        )}
+      </div>
     </header>
   );
 }
@@ -987,7 +998,222 @@ function EditColaboradorModal({ colaborador, onClose, onSave, t }) {
   );
 }
 
-function App() {
+
+// ---------------------------------------------------------------------------
+// Acesso: login por e-mail e senha (Supabase Auth). Não há cadastro aberto —
+// os acessos são criados no painel do Supabase. A proteção real dos dados está
+// nas regras do banco (RLS); esta tela só organiza a entrada.
+// ---------------------------------------------------------------------------
+const TEMPO_MAX_INATIVO_MS = 60 * 60 * 1000; // sai sozinho após 1 h sem uso
+const MAX_TENTATIVAS = 5;
+const ESPERA_BLOQUEIO_MS = 60 * 1000;
+
+function TelaAcesso({ titulo, subtitulo, children }) {
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-10" style={{ background: BRAND_DARK }}>
+      <div className="w-full max-w-sm">
+        <img src={LOGO_BRANCO} alt="Meireles & Freitas — Gestão em Cobranças" className="mx-auto mb-8" style={{ width: 210, maxWidth: "70%" }} />
+        <div className="rounded-2xl p-6 shadow-2xl" style={{ background: BRAND_CREAM }}>
+          <div className="titulo-marca" style={{ color: BRAND_MID, fontSize: 11 }}>Gerador de assinaturas</div>
+          <h1 className="titulo-marca mt-1" style={{ color: BRAND_DARK, fontSize: 22 }}>{titulo}</h1>
+          {subtitulo && <p className="text-sm mt-1" style={{ color: "#4d6461" }}>{subtitulo}</p>}
+          <div className="mt-5">{children}</div>
+        </div>
+        <p className="text-center text-[11px] mt-6" style={{ color: "rgba(239,234,221,0.55)" }}>Acesso restrito à equipe Meireles &amp; Freitas</p>
+      </div>
+    </div>
+  );
+}
+
+function CampoAcesso({ id, label, ...props }) {
+  return (
+    <div>
+      <label htmlFor={id} className="block text-xs font-semibold mb-1.5" style={{ color: BRAND_DARK }}>{label}</label>
+      <input id={id} {...props} className="w-full px-3 py-2.5 rounded-lg border text-sm outline-none focus:ring-2" style={{ borderColor: "#D9D2BF", background: "#fff", color: BRAND_DARK, "--tw-ring-color": BRAND_LIME }} />
+    </div>
+  );
+}
+
+function MensagemAcesso({ tipo, children }) {
+  if (!children) return null;
+  const erro = tipo === "erro";
+  return (
+    <div role={erro ? "alert" : "status"} className="text-xs rounded-lg px-3 py-2" style={{ background: erro ? "#FEF2F2" : "#EDF2D8", color: erro ? "#991B1B" : BRAND_GREEN }}>
+      {children}
+    </div>
+  );
+}
+
+function BotaoAcesso({ carregando, children, ...props }) {
+  return (
+    <button {...props} disabled={carregando || props.disabled} className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-bold text-white disabled:opacity-60" style={{ background: BRAND_GREEN }}>
+      {carregando && <Icon name="loader-2" size={15} className="animate-spin" />} {children}
+    </button>
+  );
+}
+
+function LoginScreen() {
+  const [modo, setModo] = useState("entrar"); // entrar | recuperar
+  const [email, setEmail] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
+  const [aviso, setAviso] = useState("");
+  const [carregando, setCarregando] = useState(false);
+  const [falhas, setFalhas] = useState(0);
+  const [bloqueadoAte, setBloqueadoAte] = useState(0);
+
+  const entrar = async (e) => {
+    e.preventDefault();
+    setErro(""); setAviso("");
+    if (Date.now() < bloqueadoAte) {
+      setErro("Muitas tentativas seguidas. Aguarde um minuto e tente de novo.");
+      return;
+    }
+    setCarregando(true);
+    const { error } = await sb.auth.signInWithPassword({ email: email.trim(), password: senha });
+    setCarregando(false);
+    if (error) {
+      const n = falhas + 1;
+      if (n >= MAX_TENTATIVAS) { setBloqueadoAte(Date.now() + ESPERA_BLOQUEIO_MS); setFalhas(0); }
+      else setFalhas(n);
+      setSenha("");
+      setErro(/confirm/i.test(error.message) ? "Este e-mail ainda não foi confirmado. Confira sua caixa de entrada." : "E-mail ou senha incorretos.");
+    }
+  };
+
+  const recuperar = async (e) => {
+    e.preventDefault();
+    setErro(""); setAviso("");
+    if (!email.trim()) { setErro("Informe seu e-mail."); return; }
+    setCarregando(true);
+    await sb.auth.resetPasswordForEmail(email.trim(), { redirectTo: window.location.origin + window.location.pathname });
+    setCarregando(false);
+    // Mesma mensagem sempre: não revela se o e-mail tem acesso ou não.
+    setAviso("Se este e-mail tiver acesso, você vai receber um link para criar uma nova senha.");
+  };
+
+  if (modo === "recuperar") {
+    return (
+      <TelaAcesso titulo="Recuperar senha" subtitulo="Enviamos um link para você criar uma nova senha.">
+        <form onSubmit={recuperar} className="space-y-4">
+          <CampoAcesso id="rec-email" label="E-mail" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          <MensagemAcesso tipo="erro">{erro}</MensagemAcesso>
+          <MensagemAcesso>{aviso}</MensagemAcesso>
+          <BotaoAcesso type="submit" carregando={carregando}>Enviar link</BotaoAcesso>
+          <button type="button" onClick={() => { setModo("entrar"); setErro(""); setAviso(""); }} className="w-full text-xs font-semibold" style={{ color: BRAND_GREEN }}>← Voltar para o login</button>
+        </form>
+      </TelaAcesso>
+    );
+  }
+
+  return (
+    <TelaAcesso titulo="Entrar" subtitulo="Use o e-mail e a senha do seu acesso.">
+      <form onSubmit={entrar} className="space-y-4">
+        <CampoAcesso id="login-email" label="E-mail" type="email" autoComplete="username" required value={email} onChange={(e) => setEmail(e.target.value)} />
+        <CampoAcesso id="login-senha" label="Senha" type="password" autoComplete="current-password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
+        <MensagemAcesso tipo="erro">{erro}</MensagemAcesso>
+        <BotaoAcesso type="submit" carregando={carregando}><Icon name="lock" size={14} /> Entrar</BotaoAcesso>
+        <button type="button" onClick={() => { setModo("recuperar"); setErro(""); }} className="w-full text-xs font-semibold" style={{ color: BRAND_GREEN }}>Esqueci minha senha</button>
+      </form>
+    </TelaAcesso>
+  );
+}
+
+function NovaSenhaScreen({ onConcluir }) {
+  const [senha, setSenha] = useState("");
+  const [confirma, setConfirma] = useState("");
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(false);
+
+  const salvar = async (e) => {
+    e.preventDefault();
+    setErro("");
+    if (senha.length < 10) { setErro("A senha precisa ter pelo menos 10 caracteres."); return; }
+    if (!/[A-Za-z]/.test(senha) || !/[0-9]/.test(senha)) { setErro("Use letras e números na senha."); return; }
+    if (senha !== confirma) { setErro("As duas senhas não são iguais."); return; }
+    setCarregando(true);
+    const { error } = await sb.auth.updateUser({ password: senha });
+    setCarregando(false);
+    if (error) { setErro("Não foi possível salvar a senha. Peça um novo link e tente de novo."); return; }
+    onConcluir();
+  };
+
+  return (
+    <TelaAcesso titulo="Nova senha" subtitulo="Pelo menos 10 caracteres, com letras e números.">
+      <form onSubmit={salvar} className="space-y-4">
+        <CampoAcesso id="nova-senha" label="Nova senha" type="password" autoComplete="new-password" required value={senha} onChange={(e) => setSenha(e.target.value)} />
+        <CampoAcesso id="nova-senha-2" label="Repita a nova senha" type="password" autoComplete="new-password" required value={confirma} onChange={(e) => setConfirma(e.target.value)} />
+        <MensagemAcesso tipo="erro">{erro}</MensagemAcesso>
+        <BotaoAcesso type="submit" carregando={carregando}>Salvar e entrar</BotaoAcesso>
+      </form>
+    </TelaAcesso>
+  );
+}
+
+function SemAcessoScreen({ email }) {
+  return (
+    <TelaAcesso titulo="Acesso não liberado" subtitulo={`O e-mail ${email} ainda não tem permissão para usar o gerador. Peça a liberação para a equipe de Produtos.`}>
+      <BotaoAcesso type="button" onClick={() => sb.auth.signOut()}><Icon name="log-out" size={14} /> Sair</BotaoAcesso>
+    </TelaAcesso>
+  );
+}
+
+function Carregando() {
+  return (
+    <div className="min-h-screen flex items-center justify-center gap-2 text-sm" style={{ background: BRAND_DARK, color: BRAND_CREAM }}>
+      <Icon name="loader-2" size={18} className="animate-spin" /> Carregando...
+    </div>
+  );
+}
+
+function Root() {
+  const [sessao, setSessao] = useState(undefined);
+  const [recuperando, setRecuperando] = useState(false);
+  const [autorizado, setAutorizado] = useState(null);
+
+  useEffect(() => {
+    sb.auth.getSession().then(({ data }) => setSessao(data.session || null));
+    const { data } = sb.auth.onAuthStateChange((evento, s) => {
+      if (evento === "PASSWORD_RECOVERY") setRecuperando(true);
+      setSessao(s || null);
+    });
+    return () => data.subscription.unsubscribe();
+  }, []);
+
+  const userId = sessao && sessao.user ? sessao.user.id : null;
+
+  // Confere se o e-mail está na lista de autorizados (quando a lista existir no banco).
+  useEffect(() => {
+    if (!userId) { setAutorizado(null); return; }
+    let ativo = true;
+    sb.rpc("usuario_autorizado").then(({ data, error }) => {
+      if (!ativo) return;
+      setAutorizado(error ? true : data === true); // sem a função no banco, vale a regra do banco
+    });
+    return () => { ativo = false; };
+  }, [userId]);
+
+  // Sai sozinho depois de um tempo sem uso.
+  useEffect(() => {
+    if (!userId) return;
+    let timer;
+    const reiniciar = () => { clearTimeout(timer); timer = setTimeout(() => sb.auth.signOut(), TEMPO_MAX_INATIVO_MS); };
+    const eventos = ["mousedown", "keydown", "touchstart", "scroll"];
+    eventos.forEach((ev) => window.addEventListener(ev, reiniciar, { passive: true }));
+    reiniciar();
+    return () => { clearTimeout(timer); eventos.forEach((ev) => window.removeEventListener(ev, reiniciar)); };
+  }, [userId]);
+
+  if (sessao === undefined) return <Carregando />;
+  if (recuperando && sessao) return <NovaSenhaScreen onConcluir={() => setRecuperando(false)} />;
+  if (!sessao) return <LoginScreen />;
+  if (autorizado === null) return <Carregando />;
+  if (!autorizado) return <SemAcessoScreen email={sessao.user.email} />;
+  return <App usuario={sessao.user.email} onSair={() => sb.auth.signOut()} />;
+}
+
+
+function App({ usuario, onSair }) {
   const [page, setPage] = useState("dashboard");
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -1031,7 +1257,7 @@ function App() {
   const notify = (msg, type) => setToast({ msg, type: type || "success" });
 
   const registrarLog = async (descricao, tipo) => {
-    await sb.from("logs").insert({ tipo: tipo || "sucesso", descricao, usuario: "Equipe de Produtos" });
+    await sb.from("logs").insert({ tipo: tipo || "sucesso", descricao, usuario: usuario || "Equipe de Produtos" });
   };
 
   const handleGerar = async (registro) => {
@@ -1110,7 +1336,7 @@ function App() {
       <ToastView toast={toast} />
       <Sidebar page={page} setPage={setPage} sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} revisaoCount={0} />
       <div className="flex-1 min-w-0 flex flex-col">
-        <Topbar title={title} subtitle={subtitle} t={t} darkMode={darkMode} setDarkMode={setDarkMode} setSidebarOpen={setSidebarOpen} />
+        <Topbar title={title} subtitle={subtitle} t={t} darkMode={darkMode} setDarkMode={setDarkMode} setSidebarOpen={setSidebarOpen} usuario={usuario} onSair={onSair} />
         <main className="flex-1 overflow-y-auto">
           {carregandoDados ? (
             <div className={`flex items-center justify-center gap-2 py-20 ${t.subtext}`}>
@@ -1152,7 +1378,7 @@ function App() {
   );
 }
 
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+ReactDOM.createRoot(document.getElementById("root")).render(<Root />);
 </script>
 <script>
   (function () {
